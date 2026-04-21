@@ -9,6 +9,8 @@ jobs:
   build:
     name: Build binary and Docker image
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout
@@ -46,13 +48,14 @@ jobs:
           docker build \
             -f ./docker/Dockerfile.github \
             -t fnos-remote-ups:${VERSION} \
+            -t fnos-remote-ups:latest \
             .
 
       - name: Export Docker image
         run: |
           VERSION=${{ steps.version.outputs.VERSION }}
-          IMG_FILE=dist/fnos-remote-ups-${VERSION}.img.gz
-          docker image save fnos-remote-ups:${VERSION} | gzip > ${IMG_FILE}
+          IMG_FILE=dist/fnos-remote-ups-${VERSION}.docker.img.gz
+          docker image save fnos-remote-ups:${VERSION} fnos-remote-ups:latest | gzip > ${IMG_FILE}
           echo "IMG_FILE=${IMG_FILE}" >> $GITHUB_ENV
 
       - name: Create Release
@@ -60,6 +63,43 @@ jobs:
         with:
           name: Release ${{ steps.version.outputs.VERSION }}
           generate_release_notes: true
+          body: |
+            ## 附件说明
+
+            | 文件 | 说明 |
+            |------|------|
+            | `fnos-remote-ups-${{ steps.version.outputs.VERSION }}.tar.gz` | Linux 二进制程序包，含可执行文件和 README |
+            | `fnos-remote-ups-${{ steps.version.outputs.VERSION }}.docker.img.gz` | Docker 镜像文件，适用于无法访问 Docker Hub 的环境 |
+
+            ## 二进制程序使用
+
+            ```bash
+            # 解压
+            tar -xzf fnos-remote-ups-${{ steps.version.outputs.VERSION }}.tar.gz
+            cd fnos-remote-ups-${{ steps.version.outputs.VERSION }}
+
+            # 连接远程 NUT UPS 并自动挂载虚拟 USB 设备
+            ./fnos-remote-ups -u myups@192.168.1.100 -m
+            ```
+
+            ## Docker 镜像使用
+
+            ```bash
+            # 导入镜像
+            docker image load -i fnos-remote-ups-${{ steps.version.outputs.VERSION }}.docker.img.gz
+
+            # 以 host 网络模式运行（推荐）
+            docker run -d \
+              --name fnos-remote-ups \
+              --privileged \
+              --network host \
+              --restart unless-stopped \
+              -e REMOTE_UPS="myups@192.168.1.100" \
+              -e AUTO_MOUNT="true" \
+              fnos-remote-ups:latest
+            ```
+
+            > 详细说明请参阅 [README](https://github.com/iwinmin/fnos-remote-ups#readme)
           files: |
             ${{ env.PKG_FILE }}
             ${{ env.IMG_FILE }}

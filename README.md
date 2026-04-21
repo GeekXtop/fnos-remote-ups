@@ -120,6 +120,21 @@ docker build -f docker/Dockerfile -t fnos-remote-ups .
 
 ## Docker 部署
 
+### 从 GitHub Release 导入镜像（推荐）
+
+从 [Releases](https://github.com/iwinmin/fnos-remote-ups/releases) 页面下载对应版本的 `.docker.img.gz` 文件，然后导入到本地 Docker：
+
+```bash
+# 下载镜像文件（以 v1.0.0 为例）
+wget https://github.com/iwinmin/fnos-remote-ups/releases/download/v1.0.0/fnos-remote-ups-v1.0.0.docker.img.gz
+
+# 导入镜像
+docker image load -i fnos-remote-ups-v1.0.0.docker.img.gz
+
+# 确认镜像已导入
+docker images | grep fnos-remote-ups
+```
+
 ### 构建镜像
 
 ```bash
