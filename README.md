@@ -2,6 +2,8 @@
 
 解决飞牛NAS（fnOS）系统 UPS 支持局限性的工具。
 
+![](post/setup0.jpg)
+
 ## 背景与用途
 
 飞牛NAS（fnOS）的 UPS 管理功能仅支持直接连接本机的特定 USB UPS 硬件设备，无法识别通过网络共享的 UPS。
@@ -27,6 +29,7 @@
 ## 项目信息
 
 - **项目地址**: https://github.com/iwinmin/fnos-remote-ups
+- **安装说明**: [飞牛系统安装说明](docs/install.md)
 - **开发者**: Winmin
 
 ## 功能特性
