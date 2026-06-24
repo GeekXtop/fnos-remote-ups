@@ -44,7 +44,14 @@ struct usbip_device global_devinfo = {
 };
 
 // UPS设备实现
-UPSDevice::UPSDevice(const std::string& ups_identifier) : running(false), last_full_query_time(std::chrono::steady_clock::now()), full_query_interval(60) {
+UPSDevice::UPSDevice(const std::string& ups_identifier,
+                     const std::string& manufacturer,
+                     const std::string& product)
+    : running(false),
+      last_full_query_time(std::chrono::steady_clock::now()),
+      full_query_interval(60),
+      manufacturer(manufacturer),
+      product(product) {
     // 初始化UPS状态
     current_status.power_summary.ac_present = UPS_AC_PRESENT;
 
@@ -74,8 +81,8 @@ UPSDevice::~UPSDevice() {
 void UPSDevice::init_descriptors() {
     // 字符串描述符
     string_descriptors[0] = { 0x04, USB_DT_STRING, 0x09, 0x04 };    // Language ID English
-    string_descriptors[1] = create_string_descriptor(DEVICE_MANUFACTURER); // Manufacturer
-    string_descriptors[2] = create_string_descriptor(DEVICE_PRODUCT);   // Product
+    string_descriptors[1] = create_string_descriptor(manufacturer); // Manufacturer
+    string_descriptors[2] = create_string_descriptor(product);   // Product
     string_descriptors[3] = create_string_descriptor(DEVICE_SERIAL_NUMBER);   // Serial Number
     string_descriptors[4] = create_string_descriptor(DEVICE_OEM_INFO);        // OEMInfomation
     string_descriptors[5] = create_string_descriptor(DEVICE_BATTERY_TYPE);     // BatteryType

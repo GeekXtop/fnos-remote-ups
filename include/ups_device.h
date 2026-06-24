@@ -26,6 +26,8 @@ private:
     std::string last_status;
     std::chrono::time_point<std::chrono::steady_clock> last_full_query_time;
     std::chrono::seconds full_query_interval;
+    std::string manufacturer;
+    std::string product;
 
     // USB描述符数据
     std::vector<uint8_t> device_descriptor;
@@ -45,7 +47,9 @@ private:
     std::map<std::string, std::string> get_status_from_nut();
 
 public:
-    UPSDevice(const std::string& ups_identifier);
+    UPSDevice(const std::string& ups_identifier,
+              const std::string& manufacturer = DEFAULT_DEVICE_MANUFACTURER,
+              const std::string& product = DEFAULT_DEVICE_PRODUCT);
     ~UPSDevice();
 
     void start();

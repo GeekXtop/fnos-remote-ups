@@ -15,6 +15,14 @@ if [ -n "$SERVER_PORT" ]; then
   set -- "$@" -p "$SERVER_PORT"
 fi
 
+if [ -n "$DEVICE_MANUFACTURER" ]; then
+  set -- "$@" --manufacturer "$DEVICE_MANUFACTURER"
+fi
+
+if [ -n "$DEVICE_PRODUCT" ]; then
+  set -- "$@" --product "$DEVICE_PRODUCT"
+fi
+
 if [ "$AUTO_MOUNT" == "true" ]; then
   set -- "$@" -m
 else

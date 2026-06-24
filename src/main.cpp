@@ -52,6 +52,8 @@ int main(int argc, char* argv[]) {
     int auto_mount_port = 0;
     std::string auto_mount_bus_id;
     bool auto_mount_enabled = false;
+    std::string manufacturer = DEFAULT_DEVICE_MANUFACTURER;
+    std::string product = DEFAULT_DEVICE_PRODUCT;
 
     // 解析命令行参数
     for (int i = 1; i < argc; i++) {
@@ -60,6 +62,12 @@ int main(int argc, char* argv[]) {
             i++;
         } else if (strcmp(argv[i], "-u") == 0 && i + 1 < argc) {
             ups_identifier = argv[i + 1];
+            i++;
+        } else if ((strcmp(argv[i], "-M") == 0 || strcmp(argv[i], "--manufacturer") == 0) && i + 1 < argc) {
+            manufacturer = argv[i + 1];
+            i++;
+        } else if ((strcmp(argv[i], "-P") == 0 || strcmp(argv[i], "--product") == 0) && i + 1 < argc) {
+            product = argv[i + 1];
             i++;
         } else if (strcmp(argv[i], "-m") == 0) {
             // 解析 -m <host>:<port>@<bus-id> 参数
@@ -103,9 +111,11 @@ int main(int argc, char* argv[]) {
             g_debug = true;
         } else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
             std::cout << "USB/IP UPS Server (libuv)" << std::endl;
-            std::cout << "Usage: " << argv[0] << " [-p port] [-u ups_name@server-ip-or-domain[:port]] [-m [host:port@bus-id]] [-d] [-h]" << std::endl;
+            std::cout << "Usage: " << argv[0] << " [-p port] [-u ups_name@server-ip-or-domain[:port]] [-M manufacturer] [-P product] [-m [host:port@bus-id]] [-d] [-h]" << std::endl;
             std::cout << "  -p port    Set listening port (default: 3240)" << std::endl;
             std::cout << "  -u ups     Set remote UPS identifier (required format: ups_name@server-ip-or-domain[:port])" << std::endl;
+            std::cout << "  -M name    Set USB manufacturer string (default: " << DEFAULT_DEVICE_MANUFACTURER << ")" << std::endl;
+            std::cout << "  -P name    Set USB product string (default: " << DEFAULT_DEVICE_PRODUCT << ")" << std::endl;
             std::cout << "  -m mount   Enable auto-mount for USB device (format: [host:port@bus-id], default host: 127.0.0.1, port: 3240, bus-id: 1-1)" << std::endl;
             std::cout << "  -d         Enable debug output" << std::endl;
             std::cout << "  -h         Show this help" << std::endl;
@@ -115,7 +125,7 @@ int main(int argc, char* argv[]) {
 
     if (ups_identifier.empty()) {
         std::cerr << "Error: UPS identifier is required. Use -u ups_name@server-ip-or-domain[:port]" << std::endl;
-        std::cout << "Usage: " << argv[0] << " [-p port] [-u ups_name@server-ip-or-domain[:port]] [-m [host:port@bus-id]] [-d] [-h]" << std::endl;
+        std::cout << "Usage: " << argv[0] << " [-p port] [-u ups_name@server-ip-or-domain[:port]] [-M manufacturer] [-P product] [-m [host:port@bus-id]] [-d] [-h]" << std::endl;
         return 1;
     }
 
@@ -141,9 +151,10 @@ int main(int argc, char* argv[]) {
     printf("Project URL: https://github.com/iwinmin/fnos-remote-ups\n");
     printf("Developer: Winmin\n");
     printf("Starting USB/IP UPS Server for remote UPS: %s...\n", ups_identifier.c_str());
+    printf("USB identity: %s / %s\n", manufacturer.c_str(), product.c_str());
 
     // 创建并启动服务器（传入全局事件循环）
-    USBIPServer server(g_loop, ups_identifier);
+    USBIPServer server(g_loop, ups_identifier, manufacturer, product);
     g_server = &server;  // 设置全局指针
 
     // 如果启用了自动挂载，启动监控线程

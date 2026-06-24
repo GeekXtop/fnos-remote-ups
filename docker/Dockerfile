@@ -32,6 +32,6 @@ COPY --from=build /build/dist/fnos-remote-ups /usr/sbin/
 # 4. 复制启动脚本
 COPY ./docker/entrypoint.sh /entrypoint.sh
 # 5. 设置环境变量
-ENV REMOTE_UPS="" SERVER_PORT="" AUTO_MOUNT="true"
+ENV REMOTE_UPS="" SERVER_PORT="" AUTO_MOUNT="true" DEVICE_MANUFACTURER="" DEVICE_PRODUCT=""
 # 6. 设置启动命令
 ENTRYPOINT [ "/entrypoint.sh" ]

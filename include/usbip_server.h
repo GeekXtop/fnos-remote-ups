@@ -88,7 +88,10 @@ private:
 
 public:
     // 必须传入外部事件循环
-    USBIPServer(uv_loop_t* loop, const std::string& ups_identifier);
+    USBIPServer(uv_loop_t* loop,
+                const std::string& ups_identifier,
+                const std::string& manufacturer = DEFAULT_DEVICE_MANUFACTURER,
+                const std::string& product = DEFAULT_DEVICE_PRODUCT);
     ~USBIPServer();
 
     // 启动服务器（不再阻塞运行事件循环）

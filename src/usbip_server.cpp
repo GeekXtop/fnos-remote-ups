@@ -37,8 +37,14 @@ void on_free_handler(uv_handle_t* handle) {
 }
 
 // USB/IP 服务器实现
-USBIPServer::USBIPServer(uv_loop_t* loop, const std::string& ups_identifier)
-    : loop(loop), running(false), ups_device(ups_identifier), ups_identifier(ups_identifier) {
+USBIPServer::USBIPServer(uv_loop_t* loop,
+                         const std::string& ups_identifier,
+                         const std::string& manufacturer,
+                         const std::string& product)
+    : loop(loop),
+      running(false),
+      ups_device(ups_identifier, manufacturer, product),
+      ups_identifier(ups_identifier) {
     if (!loop) {
         DEBUG_PRINT("Error: loop cannot be null\n");
     }

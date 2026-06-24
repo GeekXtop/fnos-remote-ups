@@ -92,10 +92,12 @@ docker build -f docker/Dockerfile -t fnos-remote-ups .
 ### 参数说明
 
 ```
-用法: fnos-remote-ups [-p port] [-u ups_name@host[:port]] [-m [host:port@bus-id]] [-d] [-h]
+用法: fnos-remote-ups [-p port] [-u ups_name@host[:port]] [-M manufacturer] [-P product] [-m [host:port@bus-id]] [-d] [-h]
 
   -p port    设置 USB/IP 监听端口 (默认: 3240)
   -u ups     远程 NUT UPS 标识符，格式: ups_name@host[:nut_port] (必填)
+  -M name    设置 USB 厂商名称 (默认: WalleCube)
+  -P name    设置 USB 产品型号 (默认: Smart UPS W150)
   -m mount   启用 usbip 自动挂载，格式: [host:usbip_port@bus-id]
              默认 host: 127.0.0.1，port: 同 -p，bus-id: 1-1
   -d         启用调试输出
@@ -119,6 +121,9 @@ docker build -f docker/Dockerfile -t fnos-remote-ups .
 
 # 使用自定义端口并启用调试
 ./fnos-remote-ups -p 8080 -u myups@192.168.1.100 -d
+
+# 自定义 fnOS 中显示的 UPS 品牌型号
+./fnos-remote-ups -u myups@192.168.1.100 -M "WalleCube" -P "Smart UPS W150"
 ```
 
 ## Docker 部署
@@ -185,6 +190,8 @@ docker run -d \
 | `REMOTE_UPS` | 空（必填） | NUT UPS 标识符，格式：`ups_name@host[:port]` |
 | `SERVER_PORT` | `3240` | USB/IP 服务监听端口 |
 | `AUTO_MOUNT` | `true` | `true`：自动挂载到本机；`host:port@bus-id`：挂载到指定地址；空：不自动挂载 |
+| `DEVICE_MANUFACTURER` | `WalleCube` | fnOS 中显示的 UPS 厂商名称 |
+| `DEVICE_PRODUCT` | `Smart UPS W150` | fnOS 中显示的 UPS 产品型号 |
 
 ### 查看运行日志
 
