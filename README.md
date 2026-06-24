@@ -149,6 +149,20 @@ docker images | grep fnos-remote-ups
 docker build -f docker/Dockerfile -t fnos-remote-ups .
 ```
 
+### GHCR 自动构建
+
+仓库已配置 GitHub Actions 自动构建并推送镜像到 GHCR：
+
+- 推送到 `main` 分支：发布 `ghcr.io/geekxtop/fnos-remote-ups:latest`
+- 推送 `v*` 标签：发布对应版本标签，例如 `ghcr.io/geekxtop/fnos-remote-ups:v1.0.0`
+- 也可以在 GitHub Actions 页面手动触发 `Build and Push GHCR Image`
+
+拉取镜像：
+
+```bash
+docker pull ghcr.io/geekxtop/fnos-remote-ups:latest
+```
+
 ### Host 网络模式（推荐）
 
 使用 host 网络模式时，容器与宿主机共享网络栈，`AUTO_MOUNT=true` 即可通过 `127.0.0.1` 自动完成 `usbip attach`。
