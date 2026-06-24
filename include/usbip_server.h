@@ -91,7 +91,9 @@ public:
     USBIPServer(uv_loop_t* loop,
                 const std::string& ups_identifier,
                 const std::string& manufacturer = DEFAULT_DEVICE_MANUFACTURER,
-                const std::string& product = DEFAULT_DEVICE_PRODUCT);
+                const std::string& product = DEFAULT_DEVICE_PRODUCT,
+                uint16_t vendor_id = DEFAULT_DEVICE_VENDOR_ID,
+                uint16_t product_id = DEFAULT_DEVICE_PRODUCT_ID);
     ~USBIPServer();
 
     // 启动服务器（不再阻塞运行事件循环）

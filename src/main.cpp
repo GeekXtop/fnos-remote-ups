@@ -2,6 +2,7 @@
 #include <cstring>
 #include <cstdio>
 #include <cstdlib>
+#include <cerrno>
 #include <unistd.h>
 #include <memory>
 #include <atomic>
@@ -45,6 +46,28 @@ void signal_handler(int signum) {
     uv_async_send(&g_signal_async);
 }
 
+static bool parse_hex_u16(const char* value, uint16_t& out) {
+    if (!value || value[0] == '\0') {
+        return false;
+    }
+
+    errno = 0;
+    char* end = nullptr;
+    unsigned long parsed = std::strtoul(value, &end, 16);
+    if (errno != 0 || end == value || *end != '\0' || parsed > 0xFFFF) {
+        return false;
+    }
+
+    out = static_cast<uint16_t>(parsed);
+    return true;
+}
+
+static std::string format_hex_u16(uint16_t value) {
+    char buffer[7];
+    std::snprintf(buffer, sizeof(buffer), "0x%04x", value);
+    return std::string(buffer);
+}
+
 int main(int argc, char* argv[]) {
     int port = USBIP_PORT;
     std::string ups_identifier;
@@ -54,6 +77,8 @@ int main(int argc, char* argv[]) {
     bool auto_mount_enabled = false;
     std::string manufacturer = DEFAULT_DEVICE_MANUFACTURER;
     std::string product = DEFAULT_DEVICE_PRODUCT;
+    uint16_t vendor_id = DEFAULT_DEVICE_VENDOR_ID;
+    uint16_t product_id = DEFAULT_DEVICE_PRODUCT_ID;
 
     // 解析命令行参数
     for (int i = 1; i < argc; i++) {
@@ -68,6 +93,18 @@ int main(int argc, char* argv[]) {
             i++;
         } else if ((strcmp(argv[i], "-P") == 0 || strcmp(argv[i], "--product") == 0) && i + 1 < argc) {
             product = argv[i + 1];
+            i++;
+        } else if (strcmp(argv[i], "--vendor-id") == 0 && i + 1 < argc) {
+            if (!parse_hex_u16(argv[i + 1], vendor_id)) {
+                std::cerr << "Error: invalid USB vendor ID: " << argv[i + 1] << std::endl;
+                return 1;
+            }
+            i++;
+        } else if (strcmp(argv[i], "--product-id") == 0 && i + 1 < argc) {
+            if (!parse_hex_u16(argv[i + 1], product_id)) {
+                std::cerr << "Error: invalid USB product ID: " << argv[i + 1] << std::endl;
+                return 1;
+            }
             i++;
         } else if (strcmp(argv[i], "-m") == 0) {
             // 解析 -m <host>:<port>@<bus-id> 参数
@@ -111,11 +148,13 @@ int main(int argc, char* argv[]) {
             g_debug = true;
         } else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0) {
             std::cout << "USB/IP UPS Server (libuv)" << std::endl;
-            std::cout << "Usage: " << argv[0] << " [-p port] [-u ups_name@server-ip-or-domain[:port]] [-M manufacturer] [-P product] [-m [host:port@bus-id]] [-d] [-h]" << std::endl;
+            std::cout << "Usage: " << argv[0] << " [-p port] [-u ups_name@server-ip-or-domain[:port]] [-M manufacturer] [-P product] [--vendor-id hex] [--product-id hex] [-m [host:port@bus-id]] [-d] [-h]" << std::endl;
             std::cout << "  -p port    Set listening port (default: 3240)" << std::endl;
             std::cout << "  -u ups     Set remote UPS identifier (required format: ups_name@server-ip-or-domain[:port])" << std::endl;
             std::cout << "  -M name    Set USB manufacturer string (default: " << DEFAULT_DEVICE_MANUFACTURER << ")" << std::endl;
             std::cout << "  -P name    Set USB product string (default: " << DEFAULT_DEVICE_PRODUCT << ")" << std::endl;
+            std::cout << "  --vendor-id hex   Set USB vendor ID (default: " << format_hex_u16(DEFAULT_DEVICE_VENDOR_ID) << ")" << std::endl;
+            std::cout << "  --product-id hex  Set USB product ID (default: " << format_hex_u16(DEFAULT_DEVICE_PRODUCT_ID) << ")" << std::endl;
             std::cout << "  -m mount   Enable auto-mount for USB device (format: [host:port@bus-id], default host: 127.0.0.1, port: 3240, bus-id: 1-1)" << std::endl;
             std::cout << "  -d         Enable debug output" << std::endl;
             std::cout << "  -h         Show this help" << std::endl;
@@ -125,7 +164,7 @@ int main(int argc, char* argv[]) {
 
     if (ups_identifier.empty()) {
         std::cerr << "Error: UPS identifier is required. Use -u ups_name@server-ip-or-domain[:port]" << std::endl;
-        std::cout << "Usage: " << argv[0] << " [-p port] [-u ups_name@server-ip-or-domain[:port]] [-M manufacturer] [-P product] [-m [host:port@bus-id]] [-d] [-h]" << std::endl;
+        std::cout << "Usage: " << argv[0] << " [-p port] [-u ups_name@server-ip-or-domain[:port]] [-M manufacturer] [-P product] [--vendor-id hex] [--product-id hex] [-m [host:port@bus-id]] [-d] [-h]" << std::endl;
         return 1;
     }
 
@@ -148,13 +187,13 @@ int main(int argc, char* argv[]) {
     signal(SIGINT, signal_handler);
 
     printf("USB/IP UPS Server for NUT (Network UPS Tools)\n");
-    printf("Project URL: https://github.com/iwinmin/fnos-remote-ups\n");
+    printf("Project URL: https://github.com/GeekXtop/fnos-remote-ups\n");
     printf("Developer: Winmin\n");
     printf("Starting USB/IP UPS Server for remote UPS: %s...\n", ups_identifier.c_str());
-    printf("USB identity: %s / %s\n", manufacturer.c_str(), product.c_str());
+    printf("USB identity: %04x:%04x %s / %s\n", vendor_id, product_id, manufacturer.c_str(), product.c_str());
 
     // 创建并启动服务器（传入全局事件循环）
-    USBIPServer server(g_loop, ups_identifier, manufacturer, product);
+    USBIPServer server(g_loop, ups_identifier, manufacturer, product, vendor_id, product_id);
     g_server = &server;  // 设置全局指针
 
     // 如果启用了自动挂载，启动监控线程
@@ -162,8 +201,8 @@ int main(int argc, char* argv[]) {
         auto_mount_host,
         auto_mount_port,
         auto_mount_bus_id,
-        DEVICE_VENDOR_ID,
-        DEVICE_PRODUCT_ID,
+        vendor_id,
+        product_id,
         DEVICE_SERIAL_NUMBER
     ));
     if (auto_mount_enabled && !auto_mount_host.empty() && !auto_mount_bus_id.empty()) {

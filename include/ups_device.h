@@ -28,6 +28,8 @@ private:
     std::chrono::seconds full_query_interval;
     std::string manufacturer;
     std::string product;
+    uint16_t vendor_id;
+    uint16_t product_id;
 
     // USB描述符数据
     std::vector<uint8_t> device_descriptor;
@@ -49,7 +51,9 @@ private:
 public:
     UPSDevice(const std::string& ups_identifier,
               const std::string& manufacturer = DEFAULT_DEVICE_MANUFACTURER,
-              const std::string& product = DEFAULT_DEVICE_PRODUCT);
+              const std::string& product = DEFAULT_DEVICE_PRODUCT,
+              uint16_t vendor_id = DEFAULT_DEVICE_VENDOR_ID,
+              uint16_t product_id = DEFAULT_DEVICE_PRODUCT_ID);
     ~UPSDevice();
 
     void start();

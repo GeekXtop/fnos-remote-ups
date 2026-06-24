@@ -40,14 +40,18 @@ void on_free_handler(uv_handle_t* handle) {
 USBIPServer::USBIPServer(uv_loop_t* loop,
                          const std::string& ups_identifier,
                          const std::string& manufacturer,
-                         const std::string& product)
+                         const std::string& product,
+                         uint16_t vendor_id,
+                         uint16_t product_id)
     : loop(loop),
       running(false),
-      ups_device(ups_identifier, manufacturer, product),
+      ups_device(ups_identifier, manufacturer, product, vendor_id, product_id),
       ups_identifier(ups_identifier) {
     if (!loop) {
         DEBUG_PRINT("Error: loop cannot be null\n");
     }
+    global_devinfo.idVendor = htons(vendor_id);
+    global_devinfo.idProduct = htons(product_id);
 }
 
 USBIPServer::~USBIPServer() {
@@ -392,14 +396,15 @@ int USBIPServer::handle_devlist_request(ClientContext* ctx) {
     uint32_t ndev = htonl(1);
 
     // 构建缓冲区数组
-    ResponseData buffers[3] = {
+    ResponseData buffers[4] = {
         { reinterpret_cast<const char*>(&reply_header), sizeof(reply_header) },
         { reinterpret_cast<const char*>(&ndev), sizeof(ndev) },
-        { reinterpret_cast<const char*>(&global_devinfo), sizeof(global_devinfo) }
+        { reinterpret_cast<const char*>(&global_devinfo), sizeof(global_devinfo) },
+        { reinterpret_cast<const char*>(&global_intf), sizeof(global_intf) }
     };
 
     // 发送响应
-    send_response(ctx, buffers, 3);
+    send_response(ctx, buffers, 4);
 
     DEBUG_PRINT("Device list response sent successfully\n");
     return 0;
@@ -514,6 +519,9 @@ int USBIPServer::handle_usb_command(ClientContext* ctx, const union usbip_header
                 uv_timer_start(timer, on_interrupt_timer, 500, 0);
 
                 return 0;
+            } else if (hdr.base.ep == 2 || hdr.base.ep == 0x02) {
+                DEBUG_PRINT("Interrupt OUT request received, acknowledging with no data\n");
+                response_length = 0;
             } else {
                 DEBUG_PRINT("Unknown endpoint: %d\n", hdr.base.ep);
                 response_length = 0;

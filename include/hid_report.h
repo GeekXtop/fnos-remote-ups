@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-// CyberPower UPS HID Descriptor as hex array
+// UPS HID descriptor as hex array
 // Generated from hex descriptor data
 extern const uint8_t ups_hid_descriptor[];
 extern const unsigned int ups_hid_descriptor_len;

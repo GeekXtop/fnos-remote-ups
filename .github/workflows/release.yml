@@ -99,7 +99,7 @@ jobs:
               fnos-remote-ups:latest
             ```
 
-            > 详细说明请参阅 [README](https://github.com/iwinmin/fnos-remote-ups#readme)
+            > 详细说明请参阅 [README](https://github.com/GeekXtop/fnos-remote-ups#readme)
           files: |
             ${{ env.PKG_FILE }}
             ${{ env.IMG_FILE }}

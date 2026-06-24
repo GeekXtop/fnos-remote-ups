@@ -87,7 +87,7 @@ echo "vhci-hcd" | sudo tee -a /etc/modules
 
 ### 第二步：导入 Docker 镜像
 
-1. 从 [GitHub Releases](https://github.com/iwinmin/fnos-remote-ups/releases) 下载最新版本的 `.docker.img.gz` 文件
+1. 从 [GitHub Releases](https://github.com/GeekXtop/fnos-remote-ups/releases) 下载最新版本的 `.docker.img.gz` 文件
 
 2. 通过飞牛 Web 界面上传镜像文件到飞牛系统中, 并复制镜像的原始路径
 
@@ -147,6 +147,8 @@ docker run -d \
 | `REMOTE_UPS` | 必填 | NUT UPS 标识符，格式：`ups_name@host[:port]` |
 | `SERVER_PORT` | `3240` | USB/IP 监听端口 |
 | `AUTO_MOUNT` | `true` | `true`：自动挂载到本机;<br>`host:port@bus-id`：挂载到指定地址;<br> 留空则不自动挂载 |
+| `DEVICE_VENDOR_ID` | `04d8` | USB 厂商 ID，十六进制 |
+| `DEVICE_PRODUCT_ID` | `d005` | USB 产品 ID，十六进制 |
 
 
 ### 查看运行状态
@@ -158,7 +160,7 @@ docker run -d \
 sudo docker logs fnos-remote-ups
 
 # 确认设备挂载
-lsusb | grep 0764:0501
+lsusb | grep 04d8:d005
 ```
 
 通过飞牛 Docker 应用查看运行日志
@@ -189,8 +191,8 @@ lsusb | grep 0764:0501
 
 ## 项目信息
 
-- 🏠 **GitHub 地址**：https://github.com/iwinmin/fnos-remote-ups
-- 📦 **Releases 下载**：https://github.com/iwinmin/fnos-remote-ups/releases
+- 🏠 **GitHub 地址**：https://github.com/GeekXtop/fnos-remote-ups
+- 📦 **Releases 下载**：https://github.com/GeekXtop/fnos-remote-ups/releases
 - 👤 **开发者**：Winmin
 
 ## 写在最后

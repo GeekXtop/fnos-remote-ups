@@ -1,273 +1,44 @@
 #include <stdint.h>
 #include "hid_report.h"
 
-// CyberPower UPS HID Descriptor as hex array
-// Generated from hex descriptor data
+// HID report descriptor captured from the real 04d8:d005 WalleCube Smart UPS W150.
 const uint8_t ups_hid_descriptor[] = {
-    // Usage Page (Power Device) - 0x05, 0x84
-    0x05, 0x84,
-    // Usage (UPS) - 0x09, 0x04
-    0x09, 0x04,
-    // Collection (Application) - 0xA1, 0x01
-    0xA1, 0x01,
-
-    // Usage (PowerSummary)
-    0x09, 0x24,           // Usage (PowerSummary)
-    0xA1, 0x00,           // Collection (Physical)
-
-        0x85, 0x1D,           // Report ID (0x1d)
-        0x09, 0xFE,           // Usage (iProduct)
-        0x75, 0x08,           // Report Size (8)
-        0x95, 0x01,           // Report Count (1)
-        0x15, 0x00,           // Logical Minimum (0)
-        0x26, 0xFF, 0x00,     // Logical Maximum (255)
-        0xB1, 0x22,           // Feature (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-
-        0x85, 0x1F,           // Report ID (0x1f)
-        0x09, 0xFF,           // Usage (iSerialNumber)
-        0x79, 0x02,           // String Index (2)
-        0xB1, 0x22,           // Feature (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-
-        0x85, 0x03,           // Report ID (0x03)
-        0x09, 0xFD,           // Usage (iManufacturer)
-        0xB1, 0x22,           // Feature (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-        0x05, 0x85,           // Usage Page (Battery Device)
-        0x09, 0x8F,           // Usage (iOEMInformation)
-        0xB1, 0x22,           // Feature (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-
-        0x85, 0x04,           // Report ID (0x04)
-        0x09, 0x89,           // Usage (iDeviceChemistery)
-        0xB1, 0x22,           // Feature (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-
-        0x85, 0x06,           // Report ID (0x06)
-        0x95, 0x02,           // Report Count (2)
-        0x25, 0x03,           // Logical Maximum (3)
-        0x05, 0x85,           // Usage Page (Battery Device)
-        0x09, 0x8B,           // Usage (Rechargable)
-        0x09, 0x2C,           // Usage (CapacityMode)
-        0xB1, 0x22,           // Feature (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-
-        0x85, 0x07,           // Report ID (0x07)
-        0x95, 0x06,           // Report Count (6)
-        0x25, 0x64,           // Logical Maximum (100)
-        0x09, 0x83,           // Usage (DesignCapacity)
-        0x09, 0x8D,           // Usage (CapacityGranularity1)
-        0x09, 0x8E,           // Usage (CapacityGranularity2)
-        0x09, 0x8C,           // Usage (WarningCapacityLimit)
-        0x09, 0x29,           // Usage (RemainingCapacityLimit)
-        0x09, 0x67,           // Usage (FullChargeCapacity)
-        0xB1, 0x22,           // Feature (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-
-        0x85, 0x20,           // Report ID (0x20)
-        0x95, 0x01,           // Report Count (1)
-        0x09, 0x66,           // Usage (RemainingCapacity)
-        0xB1, 0xA2,           // Feature (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-        0x09, 0x66,           // Usage (RemainingCapacity)
-        0x81, 0x23,           // Input (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-        0x75, 0x10,           // Report Size (16)
-        0x27, 0xFF, 0xFF, 0x00, 0x00,  // Logical Maximum (65535)
-        0x67, 0x21, 0xD1, 0xF0, 0x00,  // Unit (Vendor Defined)
-        0x55, 0x06,           // Unit Exponent (-10)
-        0x05, 0x84,           // Usage Page (Power Device)
-        0x09, 0x30,           // Usage (Voltage)
-        0xB1, 0xA2,           // Feature (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-        0x09, 0x30,           // Usage (Voltage)
-        0x81, 0x23,           // Input (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-
-        0x85, 0x21,           // Report ID (0x21)
-        0x66, 0x01, 0x10,     // Unit (Ampere^1 Second^16)
-        0x55, 0x00,           // Unit Exponent (-16)
-        0x05, 0x85,           // Usage Page (Battery Device)
-        0x09, 0x68,           // Usage (RunTimeToEmpty)
-        0xB1, 0xA2,           // Feature (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-        0x09, 0x68,           // Usage (RunTimeToEmpty)
-        0x81, 0x23,           // Input (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-
-        0x85, 0x82,           // Report ID (0x82)
-        0x26, 0x58, 0x02,     // Logical Maximum (600)
-        0x09, 0x2A,           // Usage (RemainingTimeLimit)
-        0x81, 0x23,           // Input (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-        0x09, 0x2A,           // Usage (RemainingTimeLimit)
-        0xB1, 0xA2,           // Feature (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-
-        0x85, 0x3F,           // Report ID (0x3f)
-        0x27, 0xFF, 0xFF, 0x00, 0x00,  // Logical Maximum (65535)
-        0x67, 0x21, 0xD1, 0xF0, 0x00,  // Unit (Vendor Defined)
-        0x55, 0x06,           // Unit Exponent (-10)
-        0x05, 0x84,           // Usage Page (Power Device)
-        0x09, 0x40,           // Usage (ConfigVoltage)
-        0xB1, 0x22,           // Feature (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-
-        0x09, 0x02,           // Usage (PresentStatus)
-        0xA1, 0x02,           // Collection (Logical)
-
-            0x85, 0x22,           // Report ID (0x22)
-            0x75, 0x01,           // Report Size (1)
-            0x95, 0x06,           // Report Count (6)
-            0x25, 0x01,           // Logical Maximum (1)
-            0x65, 0x00,           // Unit (none)
-            0x55, 0x00,           // Unit Exponent (-16)
-            0x05, 0x85,           // Usage Page (Battery Device)
-            0x09, 0xD0,           // Usage (ACPresent)
-            0x09, 0x44,           // Usage (Charging)
-            0x09, 0x45,           // Usage (Discharging)
-            0x09, 0x46,           // Usage (FullyCharged)
-            0x09, 0x43,           // Usage (RemainingTimeLimitExpired)
-            0x09, 0x42,           // Usage (BelowRemainingCapacityLimit)
-            0xB1, 0xA2,           // Feature (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-            0x09, 0xD0,           // Usage (ACPresent)
-            0x09, 0x44,           // Usage (Charging)
-            0x09, 0x45,           // Usage (Discharging)
-            0x09, 0x46,           // Usage (FullyCharged)
-            0x09, 0x43,           // Usage (RemainingTimeLimitExpired)
-            0x09, 0x42,           // Usage (BelowRemainingCapacityLimit)
-            0x81, 0x23,           // Input (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-            0x95, 0x01,           // Report Count (1)
-            0x75, 0x02,           // Report Size (2)
-            0xB1, 0x01,           // Feature (Cnst,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-            0x81, 0x23,           // Input (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-        0xC0,                 // End Collection (PresentStatus)
-
-        0x85, 0x80,           // Report ID (0x80)
-        0x75, 0x08,           // Report Size (8)
-        0x15, 0x01,           // Logical Minimum (1)
-        0x25, 0x03,           // Logical Maximum (3)
-        0x05, 0x84,           // Usage Page (Power Device)
-        0x09, 0x5A,           // Usage (AudibleAlarmControl)
-        0xB1, 0xA2,           // Feature (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-        0x09, 0x5A,           // Usage (AudibleAlarmControl)
-        0x81, 0x23,           // Input (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-    0xC0,                 // End Collection (PowerSummary)
-
-    // Usage (Input) Collection
-    0x05, 0x84,           // Usage Page (Power Device)
-    0x09, 0x1A,           // Usage (Input)
-    0xA1, 0x00,           // Collection (Physical)
-
-        0x85, 0x23,           // Report ID (0x23)
-        0x75, 0x10,           // Report Size (16)
-        0x15, 0x00,           // Logical Minimum (0)
-        0x26, 0x5E, 0x01,     // Logical Maximum (350)
-        0x67, 0x21, 0xD1, 0xF0, 0x00,  // Unit (Vendor Defined)
-        0x55, 0x07,           // Unit Exponent (7)
-        0x05, 0x84,           // Usage Page (Power Device)
-        0x09, 0x30,           // Usage (Voltage)
-        0xB1, 0xA2,           // Feature (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-        0x09, 0x30,           // Usage (Voltage)
-        0x81, 0x23,           // Input (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-
-        0x85, 0x2A,           // Report ID (0x2a)
-        0x75, 0x10,           // Report Size (16)
-        0x95, 0x01,           // Report Count (1)
-        0x05, 0x84,           // Usage Page (Power Device)
-        0x09, 0x32,           // Usage (Frequency)
-        0x15, 0x00,           // Logical Minimum (0)
-        0x26, 0xFF, 0x7F,     // Logical Maximum (32767)
-        0xB1, 0xA2,           // Feature (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-
-        0x85, 0x83,           // Report ID (0x83)
-        0x09, 0x53,           // Usage (LowVoltageTransfer)
-        0x16, 0x8C, 0x00,     // Logical Minimum (140)
-        0x26, 0x94, 0x00,     // Logical Maximum (148)
-        0xB1, 0x22,           // Feature (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-
-        0x85, 0x84,           // Report ID (0x84)
-        0x09, 0x54,           // Usage (HighVoltageTransfer)
-        0x16, 0x1F, 0x01,     // Logical Minimum (287)
-        0x26, 0x27, 0x01,     // Logical Maximum (295)
-        0xB1, 0x22,           // Feature (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-
-        0x85, 0x88,           // Report ID (0x88)
-        0x16, 0x64, 0x00,     // Logical Minimum (100)
-        0x26, 0xF0, 0x00,     // Logical Maximum (240)
-        0x09, 0x40,           // Usage (ConfigVoltage)
-        0xB1, 0xA2,           // Feature (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-        0x09, 0x40,           // Usage (ConfigVoltage)
-        0x81, 0x23,           // Input (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-    0xC0,                 // End Collection (Input)
-
-    // Usage (Output) Collection
-    0x09, 0x1C,           // Usage (Output)
-    0xA1, 0x00,           // Collection (Physical)
-
-        0x85, 0x23,           // Report ID (0x23)
-        0x15, 0x00,           // Logical Minimum (0)
-        0x26, 0x2C, 0x01,     // Logical Maximum (300)
-        0x09, 0x30,           // Usage (Voltage)
-        0xB1, 0xA2,           // Feature (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-        0x09, 0x30,           // Usage (Voltage)
-        0x81, 0x23,           // Input (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-
-        0x85, 0x25,           // Report ID (0x25)
-        0x75, 0x08,           // Report Size (8)
-        0x25, 0x64,           // Logical Maximum (100)
-        0x65, 0x00,           // Unit (none)
-        0x55, 0x00,           // Unit Exponent (-16)
-        0x09, 0x35,           // Usage (PercentLoad)
-        0xB1, 0xA2,           // Feature (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-        0x09, 0x35,           // Usage (PercentLoad)
-        0x81, 0x23,           // Input (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-
-        0x85, 0x28,           // Report ID (0x28)
-        0x75, 0x01,           // Report Size (1)
-        0x25, 0x01,           // Logical Maximum (1)
-        0x95, 0x03,           // Report Count (3)
-        0x65, 0x00,           // Unit (none)
-        0x55, 0x00,           // Unit Exponent (0)
-        0x09, 0x65,           // Usage (Overload)
-        0x09, 0x6E,           // Usage (Boost)
-        0x09, 0x6F,           // Usage (Buck)
-        0xB1, 0xA2,           // Feature (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-        0x09, 0x65,           // Usage (Overload)
-        0x09, 0x6E,           // Usage (Boost)
-        0x09, 0x6F,           // Usage (Buck)
-        0x81, 0x23,           // Input (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-        0x75, 0x05,           // Report Size (5)
-        0x95, 0x01,           // Report Count (1)
-        0xB1, 0x01,           // Feature (Cnst,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-        0x81, 0x23,           // Input (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-
-        0x85, 0x3E,           // Report ID (0x3e)
-        0x75, 0x10,           // Report Size (16)
-        0x27, 0xFF, 0xFF, 0x00, 0x00,  // Logical Maximum (65535)
-        0x66, 0x21, 0xD1,     // Unit (Vendor Defined)
-        0x55, 0x07,           // Unit Exponent (7)
-        0x09, 0x44,           // Usage (ConfigActivePower)
-        0xB1, 0xA2,           // Feature (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-        0x09, 0x43,           // Usage (ConfigApparentPower)
-        0xB1, 0xA2,           // Feature (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-
-        0x85, 0x85,           // Report ID (0x85)
-        0x75, 0x08,           // Report Size (8)
-        0x25, 0x06,           // Logical Maximum (6)
-        0x65, 0x00,           // Unit (none)
-        0x55, 0x00,           // Unit Exponent (0)
-        0x09, 0x58,           // Usage (Test)
-        0xB1, 0xA2,           // Feature (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-        0x09, 0x58,           // Usage (Test)
-        0x81, 0x23,           // Input (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-
-        0x85, 0x86,           // Report ID (0x86)
-        0x75, 0x10,           // Report Size (16)
-        0x15, 0xFF,           // Logical Minimum (-1)
-        0x26, 0xFF, 0x7F,     // Logical Maximum (32767)
-        0x35, 0xC4,           // Physical Minimum (-60)
-        0x47, 0xC4, 0xFF, 0x1D, 0x00,  // Physical Maximum (123844)
-        0x66, 0x01, 0x10,     // Unit (Ampere^1 Second^16)
-        0x55, 0x00,           // Unit Exponent (0)
-        0x09, 0x57,           // Usage (DelayBeforeShutdown)
-        0xB1, 0xA2,           // Feature (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-        0x09, 0x57,           // Usage (DelayBeforeShutdown)
-        0x81, 0x23,           // Input (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-
-        0x85, 0x87,           // Report ID (0x87)
-        0x09, 0x56,           // Usage (DelayBeforeStartup)
-        0xB1, 0xA2,           // Feature (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-        0x09, 0x56,           // Usage (DelayBeforeStartup)
-        0x81, 0x23,           // Input (Data,Var,Abs,NWrp,Lin,Pref,NNul,NVol)
-    0xC0,                 // End Collection (Output)
-
-    0xC0                  // End Collection (UPS)
+    0x05, 0x84, 0x09, 0x04, 0xA1, 0x01, 0x09, 0x24,
+    0xA1, 0x00, 0x05, 0x84, 0x85, 0x01, 0x09, 0x25,
+    0x09, 0x1F, 0x75, 0x04, 0x95, 0x02, 0x15, 0x00,
+    0x25, 0x0F, 0xB1, 0x03, 0x75, 0x08, 0x95, 0x01,
+    0x09, 0xFD, 0x79, 0x01, 0xB1, 0x03, 0x09, 0xFE,
+    0x79, 0x02, 0xB1, 0x03, 0x09, 0xFF, 0x79, 0x03,
+    0xB1, 0x03, 0x05, 0x85, 0x09, 0x89, 0xB1, 0x03,
+    0x09, 0x8F, 0xB1, 0x03, 0x09, 0x2C, 0xB1, 0x03,
+    0x85, 0x02, 0x05, 0x84, 0x09, 0x30, 0x75, 0x10,
+    0x95, 0x01, 0x26, 0xFF, 0x7F, 0x67, 0x21, 0xD1,
+    0xF0, 0x00, 0x55, 0x04, 0xB1, 0x02, 0x09, 0x31,
+    0x67, 0x01, 0x00, 0x10, 0x00, 0x55, 0x0D, 0xB1,
+    0x02, 0x05, 0x85, 0x09, 0x83, 0x09, 0x66, 0x09,
+    0x29, 0x09, 0x8C, 0x75, 0x08, 0x95, 0x04, 0x55,
+    0x00, 0x15, 0x00, 0x25, 0x64, 0xB1, 0x02, 0x09,
+    0x68, 0x75, 0x10, 0x95, 0x01, 0x66, 0x01, 0x10,
+    0x55, 0x00, 0x27, 0xFE, 0xFF, 0x00, 0x00, 0xB1,
+    0x02, 0x05, 0x84, 0x09, 0x36, 0x75, 0x10, 0x95,
+    0x01, 0x67, 0x01, 0x00, 0x01, 0x00, 0x55, 0x0E,
+    0xB1, 0x02, 0x09, 0x1C, 0xA1, 0x00, 0x09, 0x30,
+    0x75, 0x10, 0x95, 0x01, 0x67, 0x21, 0xD1, 0xF0,
+    0x00, 0x55, 0x05, 0xB1, 0x02, 0x09, 0x31, 0x67,
+    0x01, 0x00, 0x10, 0x00, 0x55, 0x0E, 0xB1, 0x02,
+    0xC0, 0x09, 0x1A, 0xA1, 0x00, 0x09, 0x30, 0x75,
+    0x10, 0x95, 0x01, 0x67, 0x21, 0xD1, 0xF0, 0x00,
+    0x55, 0x05, 0xB1, 0x02, 0x09, 0x31, 0x67, 0x01,
+    0x00, 0x10, 0x00, 0x55, 0x0E, 0xB1, 0x02, 0xC0,
+    0x09, 0x02, 0xA1, 0x00, 0x05, 0x84, 0x09, 0x61,
+    0x09, 0x62, 0x09, 0x65, 0x09, 0x67, 0x09, 0x69,
+    0x05, 0x85, 0x09, 0x42, 0x09, 0x43, 0x09, 0x44,
+    0x09, 0x45, 0x09, 0x4B, 0x09, 0xD0, 0x09, 0xD1,
+    0x65, 0x00, 0x55, 0x00, 0x25, 0x01, 0x75, 0x01,
+    0x95, 0x0C, 0xB1, 0x83, 0x95, 0x04, 0xB1, 0x83,
+    0xC0, 0x85, 0x03, 0x05, 0x85, 0x09, 0x67, 0x75,
+    0x08, 0x95, 0x01, 0x55, 0x00, 0x15, 0x00, 0x25,
+    0x64, 0xB1, 0x02, 0xC0, 0xC0
 };
 
 void write_uint16_le(uint8_t* buf, uint16_t val) {

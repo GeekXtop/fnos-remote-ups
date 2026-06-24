@@ -19,7 +19,7 @@ RUN make
 FROM alpine:3.22
 
 # 设置开发者信息和github地址
-LABEL github="https://github.com/iwinmin/fnos-remote-ups"
+LABEL github="https://github.com/GeekXtop/fnos-remote-ups"
 LABEL maintainer="Winmin Tam <winmintam@gmail.com>"
 
 # 1. 设置镜像地址, 安装 usbip 工具
@@ -32,6 +32,6 @@ COPY --from=build /build/dist/fnos-remote-ups /usr/sbin/
 # 4. 复制启动脚本
 COPY ./docker/entrypoint.sh /entrypoint.sh
 # 5. 设置环境变量
-ENV REMOTE_UPS="" SERVER_PORT="" AUTO_MOUNT="true" DEVICE_MANUFACTURER="" DEVICE_PRODUCT=""
+ENV REMOTE_UPS="" SERVER_PORT="" AUTO_MOUNT="true" DEVICE_MANUFACTURER="" DEVICE_PRODUCT="" DEVICE_VENDOR_ID="" DEVICE_PRODUCT_ID=""
 # 6. 设置启动命令
 ENTRYPOINT [ "/entrypoint.sh" ]

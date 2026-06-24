@@ -16,7 +16,7 @@ RUN make
 FROM alpine:3.22
 
 # 设置开发者信息和github地址
-LABEL github="https://github.com/iwinmin/fnos-remote-ups"
+LABEL github="https://github.com/GeekXtop/fnos-remote-ups"
 LABEL maintainer="Winmin Tam <winmintam@gmail.com>"
 
 RUN apk add --no-cache linux-tools-usbip libstdc++ libuv
@@ -25,6 +25,6 @@ COPY ./docker/usb.ids /usr/share/hwdata/usb.ids
 COPY --from=build /build/dist/fnos-remote-ups /usr/sbin/
 COPY ./docker/entrypoint.sh /entrypoint.sh
 
-ENV REMOTE_UPS="" SERVER_PORT="" AUTO_MOUNT="true" DEVICE_MANUFACTURER="" DEVICE_PRODUCT=""
+ENV REMOTE_UPS="" SERVER_PORT="" AUTO_MOUNT="true" DEVICE_MANUFACTURER="" DEVICE_PRODUCT="" DEVICE_VENDOR_ID="" DEVICE_PRODUCT_ID=""
 
 ENTRYPOINT [ "/entrypoint.sh" ]

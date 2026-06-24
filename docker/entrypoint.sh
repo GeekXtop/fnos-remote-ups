@@ -23,6 +23,14 @@ if [ -n "$DEVICE_PRODUCT" ]; then
   set -- "$@" --product "$DEVICE_PRODUCT"
 fi
 
+if [ -n "$DEVICE_VENDOR_ID" ]; then
+  set -- "$@" --vendor-id "$DEVICE_VENDOR_ID"
+fi
+
+if [ -n "$DEVICE_PRODUCT_ID" ]; then
+  set -- "$@" --product-id "$DEVICE_PRODUCT_ID"
+fi
+
 if [ "$AUTO_MOUNT" == "true" ]; then
   set -- "$@" -m
 else

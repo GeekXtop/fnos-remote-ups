@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <map>
 #include <string>
+#include <cmath>
 
 #include "ups_device.h"
 #include "usb_structures.h"
@@ -25,42 +26,125 @@ extern bool g_debug;
 #define DEBUG_PRINT(fmt, ...) \
     do { if (g_debug) fprintf(stderr, fmt, ##__VA_ARGS__); } while(0)
 
+static uint16_t clamp_double_to_u16(double value) {
+    if (std::isnan(value) || value <= 0.0) {
+        return 0;
+    }
+    if (value >= 65535.0) {
+        return 65535;
+    }
+    return static_cast<uint16_t>(std::lround(value));
+}
+
+static int16_t clamp_double_to_i16(double value) {
+    if (std::isnan(value)) {
+        return 0;
+    }
+    if (value <= -32768.0) {
+        return -32768;
+    }
+    if (value >= 32767.0) {
+        return 32767;
+    }
+    return static_cast<int16_t>(std::lround(value));
+}
+
+static uint8_t percent_to_u8(uint16_t value) {
+    return static_cast<uint8_t>(std::min<uint16_t>(value, 100));
+}
+
+static uint16_t parse_scaled_u16(const std::string& value, double scale) {
+    return clamp_double_to_u16(std::stod(value) * scale);
+}
+
+static int16_t parse_scaled_i16(const std::string& value, double scale) {
+    return clamp_double_to_i16(std::stod(value) * scale);
+}
+
+static uint16_t openups_temperature_raw(int16_t centi_celsius) {
+    static const uint16_t therm_tbl[] = {
+        0x31, 0x40, 0x53, 0x68, 0x82, 0xA0, 0xC3, 0xE9,
+        0x113, 0x13F, 0x16E, 0x19F, 0x1CF, 0x200, 0x22F,
+        0x25C, 0x286, 0x2AE, 0x2D3, 0x2F4, 0x312, 0x32D,
+        0x345, 0x35A, 0x36D, 0x37E, 0x38C, 0x399, 0x3A5,
+        0x3AF, 0x3B7, 0x3BF, 0x3C6, 0x3CC
+    };
+
+    double celsius = centi_celsius / 100.0;
+    if (celsius <= -40.0) {
+        return therm_tbl[0];
+    }
+    if (celsius >= 125.0) {
+        return therm_tbl[(sizeof(therm_tbl) / sizeof(therm_tbl[0])) - 1];
+    }
+
+    double pos = (celsius + 40.0) / 5.0;
+    size_t idx = static_cast<size_t>(std::floor(pos));
+    size_t last = (sizeof(therm_tbl) / sizeof(therm_tbl[0])) - 1;
+    if (idx >= last) {
+        return therm_tbl[last];
+    }
+
+    double fraction = pos - idx;
+    double raw = therm_tbl[idx] + fraction * (therm_tbl[idx + 1] - therm_tbl[idx]);
+    return clamp_double_to_u16(raw);
+}
+
 // 全局设备信息
 struct usbip_device global_devinfo = {
     "/sys/devices/usb1/1-1",  // path
     "1-1",                    // busid
     htonl(1),                 // busnum
     htonl(0x10),              // devnum
-    htonl(USB_SPEED_LOW),     // speed
-    htons(DEVICE_VENDOR_ID),  // idVendor
-    htons(DEVICE_PRODUCT_ID), // idProduct
-    htons(0x2),               // bcdDevice
-    0x00,                     // bDeviceClass
+    htonl(USB_SPEED_FULL),    // speed
+    htons(DEFAULT_DEVICE_VENDOR_ID),  // idVendor
+    htons(DEFAULT_DEVICE_PRODUCT_ID), // idProduct
+    htons(0x0100),            // bcdDevice
+    0x03,                     // bDeviceClass
     0x00,                     // bDeviceSubClass
     0x00,                     // bDeviceProtocol
     0,                        // bConfigurationValue
     1,                        // bNumConfigurations
-    0                         // bNumInterfaces
+    1                         // bNumInterfaces
+};
+
+struct usbip_interface global_intf = {
+    0x03,  // bInterfaceClass: HID
+    0x00,  // bInterfaceSubClass
+    0x00,  // bInterfaceProtocol
+    0x00   // padding
 };
 
 // UPS设备实现
 UPSDevice::UPSDevice(const std::string& ups_identifier,
                      const std::string& manufacturer,
-                     const std::string& product)
+                     const std::string& product,
+                     uint16_t vendor_id,
+                     uint16_t product_id)
     : running(false),
       last_full_query_time(std::chrono::steady_clock::now()),
       full_query_interval(60),
       manufacturer(manufacturer),
-      product(product) {
+      product(product),
+      vendor_id(vendor_id),
+      product_id(product_id) {
     // 初始化UPS状态
+    std::memset(&current_status, 0, sizeof(current_status));
     current_status.power_summary.ac_present = UPS_AC_PRESENT;
 
-    current_status.input_voltage = 230;   // 230V输入
-    current_status.output_voltage = 230;  // 230V输出
-    current_status.battery_voltage = 120; // 12V电池
+    current_status.input_voltage = 1237;    // 12.37V输入
+    current_status.output_voltage = 1219;   // 12.19V输出
+    current_status.battery_voltage = 1361;  // 13.61V电池
+    current_status.input_current = 1340;    // 1.340A输入
+    current_status.output_current = 1360;   // 1.360A输出
+    current_status.battery_current = 18;    // 0.018A电池
+    current_status.battery_temperature = 850; // 8.50C
+    current_status.battery_capacity = 100;
+    current_status.battery_charge_low = 10;
+    current_status.battery_charge_warning = 5;
     current_status.battery_charge = 100;  // 100%电量
     current_status.load_percent = 25;     // 25%负载
-    current_status.runtime = 1800;
+    current_status.runtime = 11300;
     current_status.runtime_low = 300;
     current_status.input_frequency = 500;
 
@@ -91,14 +175,14 @@ void UPSDevice::init_descriptors() {
     struct usb_device_descriptor dev_desc = {
         .bLength = sizeof(dev_desc),
         .bDescriptorType = USB_DT_DEVICE,
-        .bcdUSB = 0x0110,  // USB 1.1，适用于full-speed设备
-        .bDeviceClass = 0x00,  // 在接口中定义类 (HID设备)
+        .bcdUSB = 0x0110,
+        .bDeviceClass = 0x03,
         .bDeviceSubClass = 0x00,
         .bDeviceProtocol = 0x00,
-        .bMaxPacketSize0 = 8,  // 对于USB full-speed HID设备，通常使用8字节
-        .idVendor = DEVICE_VENDOR_ID,  // 使用global_devinfo中的信息
-        .idProduct = DEVICE_PRODUCT_ID,  // 使用global_devinfo中的信息
-        .bcdDevice = 0x0002,  // 使用global_devinfo中的信息
+        .bMaxPacketSize0 = 64,
+        .idVendor = vendor_id,
+        .idProduct = product_id,
+        .bcdDevice = 0x0100,
         .iManufacturer = 1,
         .iProduct = 2,
         .iSerialNumber = 3,
@@ -113,8 +197,8 @@ void UPSDevice::init_descriptors() {
         .bNumInterfaces = 1,
         .bConfigurationValue = 1,
         .iConfiguration = 0,
-        .bmAttributes = 0x80,  // 自供电，不支持远程唤醒
-        .bMaxPower = 25  // 100mA
+        .bmAttributes = 0x80,
+        .bMaxPower = 50  // 100mA
     };
 
     // 接口描述符 (HID)
@@ -123,7 +207,7 @@ void UPSDevice::init_descriptors() {
         .bDescriptorType = USB_DT_INTERFACE,
         .bInterfaceNumber = 0,
         .bAlternateSetting = 0,
-        .bNumEndpoints = 1,
+        .bNumEndpoints = 2,
         .bInterfaceClass = 0x03,  // HID类
         .bInterfaceSubClass = 0x00,
         .bInterfaceProtocol = 0x00,
@@ -135,7 +219,7 @@ void UPSDevice::init_descriptors() {
         .bLength = sizeof(hid_desc),
         .bDescriptorType = USB_DT_HID,
         .bcdHID = 0x0110,  // HID 1.10
-        .bCountryCode = 0x00,
+        .bCountryCode = 33,
         .bNumDescriptors = 1,
         .bReportDescriptorType = USB_DT_REPORT,
         .wReportDescriptorLength = 0  // 将在下面设置
@@ -147,13 +231,23 @@ void UPSDevice::init_descriptors() {
         .bDescriptorType = USB_DT_ENDPOINT,
         .bEndpointAddress = 0x81,  // IN端点1
         .bmAttributes = USB_ENDPOINT_XFER_INT,
-        .wMaxPacketSize = 8,  // 对于USB 1.1 full-speed HID设备，最大包大小为8字节
+        .wMaxPacketSize = 64,
+        .bInterval = 10  // 10ms间隔
+    };
+
+    // 端点描述符 (中断输出)
+    struct usb_endpoint_descriptor ep_out_desc = {
+        .bLength = sizeof(ep_out_desc),
+        .bDescriptorType = USB_DT_ENDPOINT,
+        .bEndpointAddress = 0x02,  // OUT端点2
+        .bmAttributes = USB_ENDPOINT_XFER_INT,
+        .wMaxPacketSize = 64,
         .bInterval = 10  // 10ms间隔
     };
 
     // 重新计算长度
     hid_desc.wReportDescriptorLength = ups_hid_descriptor_len;  // 设置正确的报告描述符长度
-    conf_desc.wTotalLength = sizeof(conf_desc) + sizeof(intf_desc) + sizeof(hid_desc) + sizeof(ep_in_desc);
+    conf_desc.wTotalLength = sizeof(conf_desc) + sizeof(intf_desc) + sizeof(hid_desc) + sizeof(ep_in_desc) + sizeof(ep_out_desc);
 
     // 保存设备描述符
     device_descriptor.assign(reinterpret_cast<uint8_t*>(&dev_desc),
@@ -174,6 +268,9 @@ void UPSDevice::init_descriptors() {
     // 保存Endpoint描述符
     endpoint_descriptor.assign(reinterpret_cast<uint8_t*>(&ep_in_desc),
                               reinterpret_cast<uint8_t*>(&ep_in_desc) + sizeof(ep_in_desc));
+    endpoint_descriptor.insert(endpoint_descriptor.end(),
+                               reinterpret_cast<uint8_t*>(&ep_out_desc),
+                               reinterpret_cast<uint8_t*>(&ep_out_desc) + sizeof(ep_out_desc));
 
     // 保存报告描述符
     report_descriptor.assign(ups_hid_descriptor, ups_hid_descriptor + ups_hid_descriptor_len);
@@ -181,7 +278,12 @@ void UPSDevice::init_descriptors() {
     // 配置描述符拼接其他描述符
     config_descriptor.insert(config_descriptor.end(), interface_descriptor.begin(), interface_descriptor.end());
     config_descriptor.insert(config_descriptor.end(), hid_descriptor.begin(), hid_descriptor.end());
-    config_descriptor.insert(config_descriptor.end(), endpoint_descriptor.begin(), endpoint_descriptor.end());
+    config_descriptor.insert(config_descriptor.end(),
+                             reinterpret_cast<uint8_t*>(&ep_in_desc),
+                             reinterpret_cast<uint8_t*>(&ep_in_desc) + sizeof(ep_in_desc));
+    config_descriptor.insert(config_descriptor.end(),
+                             reinterpret_cast<uint8_t*>(&ep_out_desc),
+                             reinterpret_cast<uint8_t*>(&ep_out_desc) + sizeof(ep_out_desc));
 
 }
 
@@ -241,25 +343,49 @@ void UPSDevice::update_status_loop() {
 
                     try {
                         if (var_name == "input.voltage") {
-                            current_status.input_voltage = static_cast<uint16_t>(std::stof(var_value) * 10); // 假设需要乘以10来匹配我们的格式
+                            current_status.input_voltage = parse_scaled_u16(var_value, 100.0);
                             DEBUG_PRINT("[DEBUG] Updated input.voltage: %d\n", current_status.input_voltage);
                         } else if (var_name == "output.voltage") {
-                            current_status.output_voltage = static_cast<uint16_t>(std::stof(var_value) * 10); // 假设需要乘以10来匹配我们的格式
+                            current_status.output_voltage = parse_scaled_u16(var_value, 100.0);
                             DEBUG_PRINT("[DEBUG] Updated output.voltage: %d\n", current_status.output_voltage);
                         } else if (var_name == "battery.voltage") {
-                            current_status.battery_voltage = static_cast<uint16_t>(std::stof(var_value) * 10); // 假设需要乘以10来匹配我们的格式
+                            current_status.battery_voltage = parse_scaled_u16(var_value, 100.0);
                             DEBUG_PRINT("[DEBUG] Updated battery.voltage: %d\n", current_status.battery_voltage);
+                        } else if (var_name == "input.current") {
+                            current_status.input_current = parse_scaled_u16(var_value, 1000.0);
+                            DEBUG_PRINT("[DEBUG] Updated input.current: %d\n", current_status.input_current);
+                        } else if (var_name == "output.current") {
+                            current_status.output_current = parse_scaled_u16(var_value, 1000.0);
+                            DEBUG_PRINT("[DEBUG] Updated output.current: %d\n", current_status.output_current);
+                        } else if (var_name == "battery.current") {
+                            current_status.battery_current = parse_scaled_u16(var_value, 1000.0);
+                            DEBUG_PRINT("[DEBUG] Updated battery.current: %d\n", current_status.battery_current);
+                        } else if (var_name == "battery.temperature") {
+                            current_status.battery_temperature = parse_scaled_i16(var_value, 100.0);
+                            DEBUG_PRINT("[DEBUG] Updated battery.temperature: %d\n", current_status.battery_temperature);
+                        } else if (var_name == "battery.capacity") {
+                            current_status.battery_capacity = parse_scaled_u16(var_value, 1.0);
+                            DEBUG_PRINT("[DEBUG] Updated battery.capacity: %d\n", current_status.battery_capacity);
                         } else if (var_name == "battery.charge") {
-                            current_status.battery_charge = static_cast<uint16_t>(std::stof(var_value));
+                            current_status.battery_charge = parse_scaled_u16(var_value, 1.0);
                             DEBUG_PRINT("[DEBUG] Updated battery.charge: %d\n", current_status.battery_charge);
+                        } else if (var_name == "battery.charge.low") {
+                            current_status.battery_charge_low = parse_scaled_u16(var_value, 1.0);
+                            DEBUG_PRINT("[DEBUG] Updated battery.charge.low: %d\n", current_status.battery_charge_low);
+                        } else if (var_name == "battery.charge.warning") {
+                            current_status.battery_charge_warning = parse_scaled_u16(var_value, 1.0);
+                            DEBUG_PRINT("[DEBUG] Updated battery.charge.warning: %d\n", current_status.battery_charge_warning);
                         } else if (var_name == "ups.load") {
-                            current_status.load_percent = static_cast<uint16_t>(std::stof(var_value));
+                            current_status.load_percent = parse_scaled_u16(var_value, 1.0);
                             DEBUG_PRINT("[DEBUG] Updated ups.load: %d\n", current_status.load_percent);
                         } else if (var_name == "battery.runtime") {
-                            current_status.runtime = static_cast<uint16_t>(std::stoi(var_value));
+                            current_status.runtime = parse_scaled_u16(var_value, 1.0);
                             DEBUG_PRINT("[DEBUG] Updated battery.runtime: %d\n", current_status.runtime);
+                        } else if (var_name == "battery.runtime.low") {
+                            current_status.runtime_low = parse_scaled_u16(var_value, 1.0);
+                            DEBUG_PRINT("[DEBUG] Updated battery.runtime.low: %d\n", current_status.runtime_low);
                         } else if (var_name == "input.frequency") {
-                            current_status.input_frequency = static_cast<uint16_t>(std::stof(var_value) * 10); // 假设需要乘以10来匹配我们的格式
+                            current_status.input_frequency = parse_scaled_u16(var_value, 10.0);
                             DEBUG_PRINT("[DEBUG] Updated input.frequency: %d\n", current_status.input_frequency);
                         } else if (var_name == "ups.status") {
                             // 解析状态字符串
@@ -473,20 +599,19 @@ int UPSDevice::handle_control_request(const struct usb_setup_packet* setup_packe
 
                 case USB_DT_ENDPOINT:
                     DEBUG_PRINT("GET_DESCRIPTOR: ENDPOINT\n");
-                    // 从配置描述符中提取端点描述符
                     if (wLength >= sizeof(usb_endpoint_descriptor)) {
-                        // 对于UPS HID设备，我们只有一个端点（中断IN端点），wIndex应该为0
-                        if (wIndex == 0) {
-                            if (endpoint_descriptor.size() > 0) {
-                                response_length = std::min((int)endpoint_descriptor.size(), (int)wLength);
-                                memcpy(response_data, endpoint_descriptor.data(), response_length);
-                                DEBUG_PRINT("Endpoint descriptor response length: %d\n", response_length);
-                            } else {
-                                response_length = 0;
-                            }
-                        } else {
-                            // 只有一个端点，所以其他wIndex值应该返回0
+                        size_t offset = 0;
+                        if (ResourceId == 0x02 || ResourceId == 2 || wIndex == 2) {
+                            offset = sizeof(usb_endpoint_descriptor);
+                        } else if (!(ResourceId == 0x81 || ResourceId == 1 || wIndex == 0 || wIndex == 1)) {
                             response_length = 0;
+                            break;
+                        }
+
+                        if (endpoint_descriptor.size() >= offset + sizeof(usb_endpoint_descriptor)) {
+                            response_length = std::min((int)sizeof(usb_endpoint_descriptor), (int)wLength);
+                            memcpy(response_data, endpoint_descriptor.data() + offset, response_length);
+                            DEBUG_PRINT("Endpoint descriptor response length: %d\n", response_length);
                         }
                     }
                     break;
@@ -608,157 +733,105 @@ int UPSDevice::handle_interrupt_request(const struct usb_setup_packet* setup_pac
 int UPSDevice::get_report(uint8_t report_type, uint8_t report_id, uint8_t* response_data, uint16_t response_length) {
     DEBUG_PRINT("GET_REPORT: type=%d, id=%d, length=%d\n", (int)report_type, (int)report_id, response_length);
 
-    // 根据报告类型和ID返回相应的报告数据
-    switch (report_type) {
-        case 0x01: // Input Report
-        case 0x03: // Feature Report
-            response_data[0] = report_id;
+    if (report_type == 0x02) {
+        DEBUG_PRINT("Output report requested\n");
+        return 0;
+    }
 
-            switch (report_id) {
-                case 0x1d:
-                    // Product String ID
-                    response_data[1] = 2;
-                    return 2;
-                case 0x1f:
-                    // Serial Number ID
-                    response_data[1] = 3;
-                    return 2;
-                case 0x3:
-                    // Manufacturer String ID
-                    response_data[1] = 1;
-                    // OEM Information String ID
-                    response_data[2] = 4;
-                    return 3;
-                case 0x4:
-                    // Device Chemistery String ID
-                    response_data[1] = 5;
-                    return 2;
-                case 0x6:
-                    // Rechargable
-                    response_data[1] = 1;
-                    // 电量单位 2(%)
-                    response_data[2] = 2;
-                    return 3;
-                case 0x7:
-                    // DesignCapacity
-                    response_data[1] = 100;
-                    // CapacityGranularity1
-                    response_data[2] = 5;
-                    // CapacityGranularity2
-                    response_data[3] = 10;
-                    // WarningCapacityLimit (battery.charge.warning)
-                    response_data[4] = 20;
-                    // RemainingCapacityLimit (battery.charge.low)
-                    response_data[5] = 10;
-                    // FullChargeCapacity
-                    response_data[6] = 100;
-                    return 7;
-                case 0x3f:
-                    // 电池设置电压 ConfigVoltage
-                    write_uint16_le(response_data + 1, 120);
-                    return 3;
-                case 0x3e:
-                    // ConfigActivePower (ups.realpower.nominal)
-                    write_uint16_le(response_data + 1, 360);
-                    // ConfigApparentPower
-                    write_uint16_le(response_data + 3, 0);
-                    return 5;
-                case 0x85:
-                    // Test Result 0-6, 6=No test initiated (ups.test.result)
-                    response_data[1] = 6;
-                    return 2;
-                case 0x88:
-                    // 输入设置电压 (input.voltage.nominal)
-                    write_uint16_le(response_data + 1, 220);
-                    return 3;
-                case 0x83:
-                    // 低压保护电压 (input.transfer.low)
-                    write_uint16_le(response_data + 1, 140);
-                    return 3;
-                case 0x84:
-                    // 高压保护电压 (input.transfer.high)
-                    write_uint16_le(response_data + 1, 295);
-                    return 3;
-                case 0x86: // DelayBeforeShutdown (ups.timer.shutdown)
-                case 0x87: // DelayBeforeStartup (ups.timer.start)
-                    response_data[1] = 0xff;
-                    response_data[2] = 0xff;
-                    return 3;
+    if (report_type != 0x01 && report_type != 0x03) {
+        DEBUG_PRINT("Unknown report type: %d\n", (int)report_type);
+        return 0;
+    }
 
+    auto append_u16 = [](std::vector<uint8_t>& report, uint16_t value) {
+        report.push_back(static_cast<uint8_t>(value & 0xff));
+        report.push_back(static_cast<uint8_t>(value >> 8));
+    };
 
-                // 动态配置状态
-                case 0x20:
-                    {
-                        ups_status status = get_status();
-                        // 电池电量 (input.voltage)
-                        response_data[1] = status.battery_charge;
-                        // 电池电压 (x10) (battery.voltage)
-                        write_uint16_le(response_data + 2, status.battery_voltage);
-                    }
-                    return 4;
-                case 0x21:
-                    // 剩余供电时间 (battery.runtime)
-                    write_uint16_le(response_data + 1, get_status().runtime);
-                    return 3;
-                case 0x82:
-                    // 低电量报警时间 (battery.runtime.low)
-                    write_uint16_le(response_data + 1, get_status().runtime_low);
-                    return 3;
-                case 0x22:
-                    {
-                        ups_status status = get_status();
-                        // UPS状态 (ups.status)
-                        response_data[1] = status.power_summary.ac_present
-                                         | status.power_summary.charging
-                                         | status.power_summary.discharging
-                                         | status.power_summary.fully_charged
-                                         | status.power_summary.low_runtime
-                                         | status.power_summary.low_battery;
-                    }
-                    return 2;
-                case 0x28:
-                    {
-                        ups_status status = get_status();
-                        // 稳压状态 (ups.status)
-                        response_data[1] = status.power_summary.overload
-                                         | status.power_summary.boost
-                                         | status.power_summary.buck;
-                    }
-                    return 2;
-                case 0x80:
-                    // AudibleAlarmControl (ups.beeper.status)
-                    response_data[1] = 1;
-                    return 2;
-                case 0x23:
-                    {
-                        ups_status status = get_status();
-                        // 市电电压 (input.voltage)
-                        write_uint16_le(response_data + 1, status.input_voltage);
-                        // 输出电压 (output.voltage)
-                        write_uint16_le(response_data + 3, status.output_voltage);
-                    }
-                    return 5;
-                case 0x2a:
-                    // 市电频率 (input.frequency)
-                    write_uint16_le(response_data + 1, get_status().input_frequency);
-                    return 3;
-                case 0x25:
-                    // 负载比例 x1% (ups.load)
-                    response_data[1] = get_status().load_percent;
-                    return 2;
+    auto copy_report = [&](const std::vector<uint8_t>& report) -> int {
+        int actual_length = std::min<int>(static_cast<int>(report.size()), response_length);
+        if (actual_length > 0) {
+            memcpy(response_data, report.data(), actual_length);
+        }
+        return actual_length;
+    };
 
-                default:
-                    DEBUG_PRINT("Unknown feature report ID: %d\n", (int)report_id);
-                    return 0;
+    switch (report_id) {
+        case 0x01:
+            // Static PowerSummary fields: iManufacturer/iProduct/iSerialNumber,
+            // iDeviceChemistry, iOEMInformation and CapacityMode.
+            return copy_report({
+                0x01,
+                0x00,
+                0x01, // iManufacturer -> string descriptor 1
+                0x02, // iProduct -> string descriptor 2
+                0x03, // iSerialNumber -> string descriptor 3
+                0x05, // iDeviceChemistry -> string descriptor 5
+                0x04, // iOEMInformation -> string descriptor 4
+                0x02  // CapacityMode: percent
+            });
+
+        case 0x02: {
+            ups_status status = get_status();
+            uint16_t status_bits = 0;
+            bool low_charge = status.power_summary.low_battery ||
+                              status.battery_charge <= status.battery_charge_low;
+            bool low_runtime = status.power_summary.low_runtime ||
+                               status.runtime <= status.runtime_low;
+
+            status_bits |= (1 << 0); // Good
+            if (status.power_summary.overload) {
+                status_bits |= (1 << 2); // Overload
             }
-            break;
+            if (status.power_summary.low_runtime) {
+                status_bits |= (1 << 4); // ShutdownImminent
+            }
+            if (low_charge) {
+                status_bits |= (1 << 5); // BelowRemainingCapacityLimit
+            }
+            if (low_runtime) {
+                status_bits |= (1 << 6); // RemainingTimeLimitExpired
+            }
+            if (status.power_summary.charging) {
+                status_bits |= (1 << 7); // Charging
+            }
+            if (status.power_summary.discharging) {
+                status_bits |= (1 << 8); // Discharging
+            }
+            if (status.power_summary.ac_present) {
+                status_bits |= (1 << 10); // ACPresent
+            }
+            status_bits |= (1 << 11); // BatteryPresent
 
-        case 0x02: // Output Report
-            DEBUG_PRINT("Output report requested\n");
-            return 0; // 暂不支持输出报告
+            std::vector<uint8_t> report;
+            report.reserve(23);
+            report.push_back(0x02);
+            append_u16(report, status.battery_voltage);
+            append_u16(report, status.battery_current);
+            report.push_back(percent_to_u8(status.battery_capacity));
+            report.push_back(percent_to_u8(status.battery_charge));
+            report.push_back(percent_to_u8(status.battery_charge_low));
+            report.push_back(percent_to_u8(status.battery_charge_warning));
+            append_u16(report, status.runtime);
+            append_u16(report, openups_temperature_raw(status.battery_temperature));
+            append_u16(report, status.output_voltage);
+            append_u16(report, status.output_current);
+            append_u16(report, status.input_voltage);
+            append_u16(report, status.input_current);
+            append_u16(report, status_bits);
+            return copy_report(report);
+        }
+
+        case 0x03: {
+            ups_status status = get_status();
+            return copy_report({
+                0x03,
+                percent_to_u8(status.battery_capacity)
+            });
+        }
 
         default:
-            DEBUG_PRINT("Unknown report type: %d\n", (int)report_type);
+            DEBUG_PRINT("Unknown openUPS report ID: %d\n", (int)report_id);
             return 0;
     }
 }

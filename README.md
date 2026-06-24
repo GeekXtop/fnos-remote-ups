@@ -28,7 +28,7 @@
 
 ## 项目信息
 
-- **项目地址**: https://github.com/iwinmin/fnos-remote-ups
+- **项目地址**: https://github.com/GeekXtop/fnos-remote-ups
 - **安装说明**: [飞牛系统安装说明](docs/install.md)
 - **开发者**: Winmin
 
@@ -92,12 +92,14 @@ docker build -f docker/Dockerfile -t fnos-remote-ups .
 ### 参数说明
 
 ```
-用法: fnos-remote-ups [-p port] [-u ups_name@host[:port]] [-M manufacturer] [-P product] [-m [host:port@bus-id]] [-d] [-h]
+用法: fnos-remote-ups [-p port] [-u ups_name@host[:port]] [-M manufacturer] [-P product] [--vendor-id hex] [--product-id hex] [-m [host:port@bus-id]] [-d] [-h]
 
   -p port    设置 USB/IP 监听端口 (默认: 3240)
   -u ups     远程 NUT UPS 标识符，格式: ups_name@host[:nut_port] (必填)
   -M name    设置 USB 厂商名称 (默认: WalleCube)
   -P name    设置 USB 产品型号 (默认: Smart UPS W150)
+  --vendor-id hex   设置 USB 厂商 ID (默认: 04d8)
+  --product-id hex  设置 USB 产品 ID (默认: d005)
   -m mount   启用 usbip 自动挂载，格式: [host:usbip_port@bus-id]
              默认 host: 127.0.0.1，port: 同 -p，bus-id: 1-1
   -d         启用调试输出
@@ -124,17 +126,20 @@ docker build -f docker/Dockerfile -t fnos-remote-ups .
 
 # 自定义 fnOS 中显示的 UPS 品牌型号
 ./fnos-remote-ups -u myups@192.168.1.100 -M "WalleCube" -P "Smart UPS W150"
+
+# 自定义 USB VID/PID
+./fnos-remote-ups -u myups@192.168.1.100 --vendor-id 04d8 --product-id d005
 ```
 
 ## Docker 部署
 
 ### 从 GitHub Release 导入镜像（推荐）
 
-从 [Releases](https://github.com/iwinmin/fnos-remote-ups/releases) 页面下载对应版本的 `.docker.img.gz` 文件，然后导入到本地 Docker：
+从 [Releases](https://github.com/GeekXtop/fnos-remote-ups/releases) 页面下载对应版本的 `.docker.img.gz` 文件，然后导入到本地 Docker：
 
 ```bash
 # 下载镜像文件（以 v1.0.0 为例）
-wget https://github.com/iwinmin/fnos-remote-ups/releases/download/v1.0.0/fnos-remote-ups-v1.0.0.docker.img.gz
+wget https://github.com/GeekXtop/fnos-remote-ups/releases/download/v1.0.0/fnos-remote-ups-v1.0.0.docker.img.gz
 
 # 导入镜像
 docker image load -i fnos-remote-ups-v1.0.0.docker.img.gz
@@ -163,6 +168,23 @@ docker build -f docker/Dockerfile -t fnos-remote-ups .
 docker pull ghcr.io/geekxtop/fnos-remote-ups:latest
 ```
 
+> `latest` 会在 GitHub Actions 发布新镜像时更新；已运行的容器不会自动替换镜像，需要重新 `docker pull` 并重建容器。需要自动更新可使用 Watchtower 一类容器更新工具。
+
+手动更新已运行容器：
+
+```bash
+docker pull ghcr.io/geekxtop/fnos-remote-ups:latest
+docker rm -f fnos-remote-ups
+docker run -d \
+  --name fnos-remote-ups \
+  --privileged \
+  --network host \
+  --restart unless-stopped \
+  -e REMOTE_UPS="myups@192.168.1.100" \
+  -e AUTO_MOUNT="true" \
+  ghcr.io/geekxtop/fnos-remote-ups:latest
+```
+
 ### Host 网络模式（推荐）
 
 使用 host 网络模式时，容器与宿主机共享网络栈，`AUTO_MOUNT=true` 即可通过 `127.0.0.1` 自动完成 `usbip attach`。
@@ -175,7 +197,7 @@ docker run -d \
   --restart unless-stopped \
   -e REMOTE_UPS="myups@192.168.1.100" \
   -e AUTO_MOUNT="true" \
-  fnos-remote-ups
+  ghcr.io/geekxtop/fnos-remote-ups:latest
 ```
 
 > `--privileged` 是必须的，容器内执行 `usbip attach` 需要操作内核 vhci-hcd 模块。
@@ -206,6 +228,8 @@ docker run -d \
 | `AUTO_MOUNT` | `true` | `true`：自动挂载到本机；`host:port@bus-id`：挂载到指定地址；空：不自动挂载 |
 | `DEVICE_MANUFACTURER` | `WalleCube` | fnOS 中显示的 UPS 厂商名称 |
 | `DEVICE_PRODUCT` | `Smart UPS W150` | fnOS 中显示的 UPS 产品型号 |
+| `DEVICE_VENDOR_ID` | `04d8` | USB 厂商 ID，十六进制 |
+| `DEVICE_PRODUCT_ID` | `d005` | USB 产品 ID，十六进制 |
 
 ### 查看运行日志
 
@@ -247,7 +271,7 @@ usbip attach --remote 127.0.0.1 --busid 1-1
 挂载成功后，fnOS 系统的 UPS 管理页面应能检测到新接入的 USB UPS 设备。可通过以下命令确认设备已出现：
 
 ```bash
-lsusb | grep 0764:0501
+lsusb | grep 04d8:d005
 ```
 
 ## 程序架构
@@ -265,11 +289,15 @@ main.cpp
 
 | 属性 | 值 |
 |------|-----|
-| 厂商 ID | 0x0764 (CyberPower) |
-| 产品 ID | 0x0501 |
+| 厂商 ID | 0x04d8 (Microchip Technology, Inc.) |
+| 产品 ID | 0xd005 |
+| USB 厂商字符串 | WalleCube |
+| USB 产品字符串 | Smart UPS W150 |
 | USB 速度 | Full-speed |
 | 总线 ID | 1-1 |
 | USB/IP 默认端口 | 3240 |
+
+说明：`04d8:d005` 是 fnOS/NUT 已支持的 USB ID；`WalleCube / Smart UPS W150` 是设备字符串，作为 fnOS 界面显示名称保留。
 
 ### 同步的 UPS 状态参数
 

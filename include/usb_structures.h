@@ -10,13 +10,13 @@
 #include <thread>
 #include <memory>
 
-#define DEVICE_VENDOR_ID 0x0764
-#define DEVICE_PRODUCT_ID 0x0501
+#define DEFAULT_DEVICE_VENDOR_ID 0x04d8
+#define DEFAULT_DEVICE_PRODUCT_ID 0xd005
 #define DEFAULT_DEVICE_MANUFACTURER "WalleCube"
 #define DEFAULT_DEVICE_PRODUCT "Smart UPS W150"
-#define DEVICE_OEM_INFO "WinminVirtualUPS"
+#define DEVICE_OEM_INFO "OPEN"
 #define DEVICE_SERIAL_NUMBER "VPS-" SERIAL_DATE
-#define DEVICE_BATTERY_TYPE "PbAcid"
+#define DEVICE_BATTERY_TYPE "LiFePO4"
 
 // USB/IP协议常量
 #define USBIP_VERSION 0x0111
@@ -271,9 +271,16 @@ struct usbip_interface {
 
 // UPS状态数据
 struct ups_status {
-    uint16_t input_voltage;    // 输入电压 (V)
-    uint16_t output_voltage;   // 输出电压 (V)
-    uint16_t battery_voltage;  // 电池电压 (V)
+    uint16_t input_voltage;    // 输入电压 (0.01V)
+    uint16_t output_voltage;   // 输出电压 (0.01V)
+    uint16_t battery_voltage;  // 电池电压 (0.01V)
+    uint16_t input_current;    // 输入电流 (0.001A)
+    uint16_t output_current;   // 输出电流 (0.001A)
+    uint16_t battery_current;  // 电池电流 (0.001A)
+    int16_t battery_temperature; // 电池温度 (0.01C)
+    uint16_t battery_capacity; // 设计容量 (%)
+    uint16_t battery_charge_low; // 低电量阈值 (%)
+    uint16_t battery_charge_warning; // 警告电量阈值 (%)
     uint16_t battery_charge;   // 电池电量 (%)
     uint16_t load_percent;     // 负载百分比 (%)
     uint16_t runtime;          // 剩余运行时间 (秒)
@@ -295,6 +302,7 @@ struct ups_status {
 
 // 全局设备信息
 extern struct usbip_device global_devinfo;
+extern struct usbip_interface global_intf;
 
 // 辅助函数声明
 void write_uint16_le(uint8_t* buf, uint16_t val);
